@@ -1,4 +1,8 @@
 Copia y pega esta DCR en el apartado de plantilla personalizada de sentinel
+
+Para poder crear la DCR es esencial primero configurar sentinel en el Law antes creado, para esto buscamos sentinel en la barra de busqueda de azure, y seleccionamos
+el resultado que sale de microsoft sentinel, para crearlo es necesario dar click en el apartado de crear, si tenemos un LAw y todavia no se asocia a sentinel, aparece en la lista, solo selecionamos y damos click en agregar, y automaticamente se crea el espacio de sentinel, seguido de esto se realiza la DCR, buscanos en el apartado de busqueda plantilla personalizada 
+
 ```DCR SENTINEL
 {
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
