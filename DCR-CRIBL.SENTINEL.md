@@ -1,8 +1,100 @@
-Copia y pega esta DCR en el apartado de plantilla personalizada de sentinel
+# Creación de la Regla de Recolectación de Datos (DCR) mediante Plantilla
 
-Para poder crear la DCR es esencial primero configurar sentinel en el Law antes creado, para esto buscamos sentinel en la barra de busqueda de azure, y seleccionamos
-el resultado que sale de microsoft sentinel, para crearlo es necesario dar click en el apartado de crear, si tenemos un LAw y todavia no se asocia a sentinel, aparece en la lista, solo selecionamos y damos click en agregar, y automaticamente se crea el espacio de sentinel, seguido de esto se realiza la DCR, buscanos en el apartado de busqueda plantilla personalizada 
+Esta guía detalla el proceso para habilitar Microsoft Sentinel en un Log Analytics Workspace (LAW) y, posteriormente, implementar una Regla de Recolectación de Datos (DCR) personalizada utilizando una plantilla JSON.
 
+---
+
+## 📌 Requisito Previo: Habilitar Microsoft Sentinel
+
+Antes de crear la DCR, su Log Analytics Workspace (LAW) debe estar asociado a Microsoft Sentinel.
+
+1.  En la barra de búsqueda del Portal de Azure, busque y seleccione **"Microsoft Sentinel"**.
+2.  Haga clic en **"Crear"**.
+3.  Aparecerá una lista de sus Log Analytics Workspaces que aún no tienen Sentinel.
+4.  Seleccione el LAW que ha estado utilizando y haga clic en **"Agregar"**.
+5.  Azure procesará la solicitud y, después de unos momentos, su espacio de trabajo de Sentinel estará listo.
+
+---
+
+## 📋 Paso 1: Recolectar IDs de Recursos Esenciales
+
+Para la plantilla de la DCR, necesitará dos valores críticos: el ID de Recurso del LAW y el ID de Recurso del Data Collection Endpoint (DCE).
+
+> **Sugerencia:** Abra el Portal de Azure en una nueva pestaña o ventana del navegador para recolectar estos IDs sin perder su progreso en la implementación de la plantilla.
+
+### A. Obtener el ID del Log Analytics Workspace (LAW)
+
+1.  Navegue a su **Log Analytics Workspace** (LAW).
+2.  En la página de "Información general" (Overview), haga clic en el enlace **"Vista JSON"** (ubicado cerca de la parte superior, junto al nombre del Grupo de Recursos).
+3.  Se abrirá un panel lateral.
+4.  Copie la cadena completa que aparece debajo de **"ID de recurso"** (`Resource ID`).
+5.  Pegue esto en un lugar seguro para usarlo más adelante.
+
+### B. Obtener el ID del Data Collection Endpoint (DCE)
+
+1.  Navegue a su recurso de **"Data Collection Endpoint"** (Punto de conexión de recopilación de datos).
+2.  En la página de "Información general" (Overview), haga clic en el enlace **"Vista JSON"**.
+3.  Se abrirá un panel lateral.
+4.  Copie la cadena completa que aparece debajo de **"ID de recurso"** (`Resource ID`).
+5.  Pegue esto en un lugar seguro.
+
+---
+
+## 🚀 Paso 2: Implementar la Plantilla de DCR Personalizada
+
+Ahora usaremos una plantilla ARM para crear la DCR con la configuración exacta que necesitamos.
+
+1.  En la barra de búsqueda del Portal de Azure, busque **"Implementar desde una plantilla personalizada"** y seleccione ese servicio.
+2.  Haga clic en la opción **"Cree su propia plantilla en el editor"**.
+3.  **Importante:** En la pantalla de edición, elimine todo el código JSON que aparece por defecto (`{ "$schema": ... }`).
+4.  Copie y pegue su código JSON de plantilla de DCR en el editor en blanco.
+
+    > **Nota:** Pegue aquí el contenido completo de su plantilla JSON personalizada.
+    >
+    > ```json
+    >// ... Borre todo a partir de este punto ...
+    > {
+    >   "$schema": "[https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#](https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#)",
+    >   "contentVersion": "1.0.0.0",
+    >   "parameters": {
+    >     
+    >   },
+    >   "resources": [
+    >     
+    >   ]
+    > }
+    > ```
+
+5.  Haga clic en **"Guardar"**.
+
+---
+
+## ✏️ Paso 3: Configurar los Parámetros de Implementación
+
+Después de guardar, será dirigido a una pantalla para completar los parámetros de la plantilla.
+
+1.  **Conceptos básicos:**
+    * **Suscripción:** Seleccione la suscripción correcta.
+    * **Grupo de recursos:** **(Crítico)** Seleccione el **mismo grupo de recursos** donde residen su LAW y su DCE.
+    * **Región:** **(Crítico)** Asegúrese de que la región coincida con la de su LAW.
+
+2.  **Configuración (Parámetros de la plantilla):**
+    * **Data Collection Rule Name:** Escriba un nombre único y descriptivo para su DCR (ej. `dcr-cribl-sentinel-syslog`).
+    * **Workspace Resource Id:** Pegue la cadena del **ID de recurso del LAW** que copió en el Paso 1.
+    * **Endpoint Resource Id:** Pegue la cadena del **ID de recurso del DCE** que copió en el Paso 1.
+
+---
+
+## ✅ Paso 4: Revisar y Crear
+
+1.  Una vez completados todos los campos, haga clic en el botón **"Revisar y crear"** en la parte inferior.
+2.  Azure validará la plantilla y los parámetros. Si todo es correcto, verá un mensaje de "Validación superada".
+3.  Haga clic en **"Crear"** para iniciar la implementación.
+4.  Recibirá una notificación cuando la implementación se haya completado con éxito ("Implementación correcta").
+
+Ha creado y configurado exitosamente su Regla de Recolección de Datos (DCR) personalizada.
+
+A continuación se muestra la DCR en formato JSON que debe pegar en el área correspondiente al crear la DCR.
 ```DCR SENTINEL
 {
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
