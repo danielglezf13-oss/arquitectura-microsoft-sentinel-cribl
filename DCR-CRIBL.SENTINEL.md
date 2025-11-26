@@ -1791,8 +1791,14 @@ A continuación se muestra la DCR en formato JSON que debe pegar en el área cor
     }
 }
 ```
-> [!IMPORTANT]
-> **Requisito de Permisos Crítico** 🛑
-> Para que la ingestión de datos funcione correctamente, es **indispensable** autorizar a la aplicación.
->
-> Debes asignar el rol **Monitoring Metrics Publisher** (Publicador de métricas de supervisión) a tu **Service Principal** (App Registration) dentro del control de acceso (IAM) de la **Data Collection Rule (DCR)**.
+## 🔐 Configuración de Permisos (RBAC)
+
+Para evitar errores de autorización (`403 Forbidden`) al enviar métricas, realiza la siguiente asignación en Azure:
+
+1.  Ve a tu recurso **Data Collection Rule (DCR)**.
+2.  Navega a la sección **Access control (IAM)**.
+3.  Selecciona **+ Add role assignment**.
+4.  Busca y selecciona el rol: `Monitoring Metrics Publisher`.
+5.  Asígnalo a tu **App Registration** (Service Principal).
+
+> **Nota:** Sin este rol, el DCR rechazará los datos entrantes de la aplicación.
