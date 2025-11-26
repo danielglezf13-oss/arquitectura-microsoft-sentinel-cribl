@@ -1791,4 +1791,8 @@ A continuación se muestra la DCR en formato JSON que debe pegar en el área cor
     }
 }
 ```
-
+> [!IMPORTANT]
+> **Requisito de Permisos Crítico** 🛑
+> Para que la ingestión de datos funcione correctamente, es **indispensable** autorizar a la aplicación.
+>
+> Debes asignar el rol **Monitoring Metrics Publisher** (Publicador de métricas de supervisión) a tu **Service Principal** (App Registration) dentro del control de acceso (IAM) de la **Data Collection Rule (DCR)**.
