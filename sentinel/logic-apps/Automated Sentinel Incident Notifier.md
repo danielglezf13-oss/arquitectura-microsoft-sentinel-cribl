@@ -13,197 +13,140 @@ This repository contains the deployment guide and Logic App code to enable a **S
 * **Notification Endpoint:** Telegram Bot API
 ---
 
-Primeros pasos, crear el bot de telegram
-1. Crear el Bot:
+# Integración de Alertas de Microsoft Sentinel con Telegram
 
-Abre Telegram y busca el usuario @BotFather.
+Este proyecto documenta la implementación de un sistema de notificaciones automatizadas para un Centro de Operaciones de Seguridad (CSOC). Utilizando **Azure Logic Apps** y la API de **Telegram**, este flujo de trabajo permite recibir alertas de incidentes de seguridad críticos directamente en un grupo de mensajería en tiempo real.
 
-Envía el comando /newbot.
+## 📋 Prerrequisitos
 
-Asigna un nombre (ej. SentinelAlerts) y un usuario (ej. Sentinel_Corp_Bot).
+* Una cuenta de **Telegram**.
+* Suscripción activa de **Microsoft Azure**.
+* Un Workspace de **Microsoft Sentinel** configurado.
+* Permisos adecuados para crear recursos y asignar roles (Owner o User Access Administrator).
 
-BotFather te dará un Token de acceso (HTTP API Token). Guárdalo, es la llave de tu bot.
-Nota: Cada actualización de telegran agrega o cambia la forma de extraer los diferentes tokens, esta version es del 2025
+---
 
-Boot father algunas veces se debe iniciar, por lo regular existe un boton de inicio, y semuestra un menu donde mediante botones puedes generar el token de acceso
+## 🚀 Guía de Implementación
 
+### Paso 1: Configuración del Bot de Telegram
 
-2. Obtener el Chat ID (Identificador del chat):
+Antes de configurar Azure, necesitamos crear el "buzón" de entrega en Telegram.
 
-Crea un grupo en Telegram donde quieras recibir las alertas y agrega a tu nuevo bot.
+1.  **Crear el Bot:**
+    * Abre Telegram y busca el usuario **@BotFather**.
+    * Envía el comando `/newbot`.
+    * Asigna un nombre descriptivo (ej. `SentinelAlerts`) y un nombre de usuario único que termine en "bot" (ej. `Sentinel_Corp_Bot`).
+    * 🔴 **Importante:** BotFather te entregará un **HTTP API Token**. Guárdalo en un lugar seguro; esta es la llave de tu bot.
+    * *Nota:* Si BotFather muestra un botón de "Iniciar", úsalo para desplegar el menú.
 
-Envía un mensaje cualquiera al grupo (ej. "Hola").
+2.  **Obtener el Chat ID:**
+    * Crea un nuevo grupo en Telegram donde desees recibir las alertas y agrega al bot que acabas de crear.
+    * Envía un mensaje de prueba al grupo (ej. "Hola").
+    * Abre tu navegador y visita la siguiente URL (reemplaza `<TU_TOKEN>` con el token del paso anterior):
+        ```
+        [https://api.telegram.org/bot](https://api.telegram.org/bot)<TU_TOKEN>/getUpdates
+        ```
+    * Busca en el texto resultante la sección `"chat": { "id": -123456789 }`.
+    * Copia el número completo (incluyendo el signo menos si es un grupo). Este es tu **Chat ID**.
 
-Abre tu navegador y visita esta URL (reemplaza <TU_TOKEN> con el que te dio BotFather): https://api.telegram.org/bot<TU_TOKEN>/getUpdates
+---
 
-Busca en el texto resultante la sección "chat": { "id": -123456789 }.
+### Paso 2: Crear la Logic App en Azure
 
-Copia ese número (incluyendo el signo menos si es un grupo). Ese es tu Chat ID.
+1.  En el portal de Azure, busca **Logic Apps** y haz clic en **Crear**.
+2.  Configura los detalles básicos:
+    * **Tipo de plan:** Consumo (Consumption). *Ideal para pagar solo por ejecución.*
+    * **Grupo de recursos:** Selecciona el mismo donde reside tu Sentinel (recomendado).
+    * **Nombre:** Ej. `Sentinel-To-Telegram`.
+    * **Región:** La misma región de tu grupo de recursos.
+    * **Log Analytics:** No habilitar (no es necesario para este conector).
+3.  Revisa y crea el recurso.
+4.  *Opcional:* Asigna etiquetas (tags) si lo requieres para organizar tus recursos.
 
+---
 
-Paso 2: Crear la Logic App en Azure
-Ve al portal de Azure y busca Logic Apps.
+### Paso 3: Configurar Permisos (Identidad Administrada)
 
-Haz clic en Crear (Agregar).
+Para que Sentinel pueda ejecutar esta Logic App automáticamente, necesitamos otorgarle permisos explícitos.
 
-Configuración básica:
+1.  Ve al **Grupo de Recursos** donde creaste la Logic App.
+2.  Entra a **Control de acceso (IAM)** > **Agregar asignación de roles**.
+3.  Busca y selecciona el rol: **Microsoft Sentinel Automation Contributor** (Colaborador de automatización de Microsoft Sentinel).
+4.  Haz clic en Siguiente y ve a la pestaña **Miembros**.
+5.  Selecciona **Asignar acceso a:** "Usuario, grupo o entidad de servicio".
+6.  En "Seleccionar miembros", busca exactamente: **Azure Security Insights**.
+    > ⚠️ **Truco:** Si no aparece como "Azure Security Insights", busca "Security Insights". Esta es la identidad de servicio de Sentinel.
+7.  Finaliza la asignación del rol.
 
-Tipo de plan: Selecciona Consumo (Consumption) para pagar solo por ejecución (es lo más barato y efectivo para esto).
+---
 
-Suscripción: Tu suscripción actual.
+### Paso 4: Diseño del Flujo de Trabajo (Playbook)
 
-Grupo de recursos: Preferiblemente el mismo donde está tu Sentinel.
+1.  Ve a tu recurso **Logic App** > **Diseñador de aplicaciones lógicas**.
+2.  Inicia con una "Blank Logic App" (Aplicación lógica en blanco).
 
-Nombre: Ej. Sentinel-To-Telegram.
-Región: De preferencia la misma donde se encuentra tu grupo de recursos
+#### A. El Disparador (Trigger)
+1.  Busca **Microsoft Sentinel**.
+2.  Selecciona el disparador: **When Microsoft Sentinel incident creation rule was triggered** (Cuando se desencadena una regla de creación de incidentes).
+    * *Asegúrate de elegir "Incident", no "Alert".*
+3.  Si pide conectar, inicia sesión con tu cuenta de Azure.
 
-y no se habilite Log Analytics, denido a que no se realizaran acciones relacionadas con este conector
+#### B. La Acción (Enviar a Telegram)
+1.  Debajo del disparador, haz clic en **+ Nuevo paso**.
+2.  Busca **HTTP** y selecciona la acción genérica llamada **HTTP** (icono de mundo verde).
+3.  Configura los parámetros:
+    * **Método:** `POST`
+    * **URI:** `https://api.telegram.org/bot<TU_NUEVO_TOKEN>/sendMessage`
+        *(Pega tu token sin espacios).*
+    * **Encabezados (Headers):**
+        * Clave: `Content-Type`
+        * Valor: `application/json`
+    * **Cuerpo (Body):** Copia y pega el siguiente JSON.
 
-Crea el recurso y ve a él cuando esté listo.
-
-Nota: Si crees necesario asignale etiquetas
-
-Paso 3: Configurar Permisos y Automatización en Sentinel
-Para que Sentinel pueda "disparar" esta Logic App, necesita permisos.
-
-Asignar Rol a Sentinel:
-
-Ve a tu grupo de recursos donde está la Logic App.
-
-Ve a Control de acceso (IAM) -> Agregar asignación de roles.
-
-Busca el rol Microsoft Sentinel Automation Contributor (Colaborador de automatización de Microsoft Sentinel).
-
-Dale a Siguiente y ve a la pestaña Miembros.
-
-Haz clic en Seleccionar miembros.
-
-⚠️ Aquí está el truco: En la barra de búsqueda, en lugar de "Sentinel", escribe: Azure Security Insights
-
-Si aparece una aplicación con ese nombre (o "Security Insights"), selecciónala. Ese es Sentinel.
-
-Termina de asignar el rol.
-
-paso 4:
-
-Ve a Microsoft Sentinel -> Automatización.
-
-Pestaña Cuadernos de estrategias activos (Active playbooks).
-
-Haz clic en Crear -> Cuaderno de estrategias con desencadenador de incidentes.
-
-Elige tu suscripción y el grupo de recursos rg-demo-xdf-uin.
-
-Ponle un nombre nuevo (ej: Telegram-Alert-V2).
-
-En el apartado de conexiones, se selecciona Conectar con la identidad administrada, y por ultimo revisar y crear
-
-una vez creada, se nos mostrara el playbook creado en la lista de automatizacion de sentinel, Esto te abrirá el diseñador de Logic Apps automáticamente con el disparador ya configurado correctamente.
-
-paso 5.
-
-Se mostrara un flujo de trabajo con el logo de sentinel, Debajo del disparador, haz clic en + Nuevo paso (New step).
-
-Busca HTTP (el icono es un mundo verde).
-
-Selecciona la acción llamada simplemente HTTP.
-
-Configúralo exactamente así:
-
-Método: POST
-
-URI: https://api.telegram.org/bot<TU_NUEVO_TOKEN>/sendMessage (Recuerda: pega tu token nuevo sin espacios y sin la barra extra).
-
-Encabezados (Headers):
-
-Escribe Content-Type en la izquierda.
-
-Escribe application/json en la derecha.
-
-Cuerpo (Body): Copia y pega este código:
-
+```json
 {
   "chat_id": "<TU_CHAT_ID>",
   "text": "🚨 **ALERTA DE SEGURIDAD SENTINEL** 🚨\n\nTitulo: @{triggerBody()?['object']?['properties']?['title']}\nSeveridad: @{triggerBody()?['object']?['properties']?['severity']}\nDescripcion: @{triggerBody()?['object']?['properties']?['description']}\n\nEnlace: @{triggerBody()?['object']?['properties']?['incidentUrl']}"
 }
+```
 
-Nota: Reemplaza <TU_CHAT_ID> por el número de tu chat. Si al pegar el código, las partes que dicen @{triggerBody...} se ven como texto simple (no como fichas de colores), bórralas y selecciónalas de la lista de Contenido Dinámico que aparece a la derecha (busca "Incident Title", "Incident Severity", etc.).
+> **⚙️ Configuración de Contenido Dinámico:**
+> 1. Reemplaza `<TU_CHAT_ID>` con tu ID numérico.
+> 2. Si al pegar el código las expresiones `@{triggerBody...}` se ven como texto plano y no como "fichas" de colores:
+>    * Borra el texto de la expresión (ej. `@{triggerBody()...}`).
+>    * Haz clic en el espacio vacío.
+>    * En la ventana emergente de **Contenido Dinámico** (rayo azul), busca y selecciona los campos correspondientes: *Incident Title*, *Incident Severity*, *Incident Description*, etc.
 
-Dale a Guardar (arriba a la izquierda).
+4.  Guarda la Logic App.
 
-paso 6.
+---
 
-¡Excelente! Ese era el paso más difícil. Al asignar el rol a Azure Security Insights, ya le diste permiso a Sentinel para que "mande" a ejecutar tu Logic App.
+### Paso 5: Regla de Automatización en Sentinel
 
-Ahora vamos a configurar lo que hace la Logic App por dentro.
+El último paso es decirle a Sentinel cuándo ejecutar este Playbook.
 
-Siguientes pasos: Diseñar el Flujo
-Ve a tu recurso Logic App que creaste.
+1.  Ve a **Microsoft Sentinel** > **Automatización**.
+2.  Crea una nueva **Regla de automatización**.
+3.  **Configuración:**
+    * **Nombre:** Ej. `Auto-Alert-Telegram-High`.
+    * **Desencadenador:** When incident is created.
+    * **Condiciones:**
+        * Haz clic en `+ Add` > `Condition (And)`.
+        * Selecciona `Severity` > `Equals`.
+        * Marca las casillas `High` y `Medium` (o según tu criterio).
+    * **Acciones:**
+        * Selecciona `Run Playbook`.
+        * En el menú desplegable, busca y selecciona `Sentinel-To-Telegram`.
+4.  Haz clic en **Aplicar**.
 
-En el menú de la izquierda, busca Diseñador de aplicaciones lógicas (Logic app designer).
+---
 
-Si te sale un video o bienvenida, ciérralo o dale a "Blank Logic App" (Aplicación lógica en blanco).
+## ✅ Pruebas
 
-Paso A: El Disparador (Trigger)
-En la barra de búsqueda escribe Sentinel.
+Para verificar el funcionamiento:
+1.  Dentro del diseñador de la Logic App, haz clic en **Run Trigger** > **Run**.
+2.  Si la configuración es correcta, recibirás el mensaje formateado en tu grupo de Telegram inmediatamente.
+3.  Alternativamente, genera un incidente de prueba en Sentinel que cumpla con las condiciones de severidad para ver la automatización completa.
 
-Selecciona el icono azul de Microsoft Sentinel.
-
-Busca y selecciona el disparador: When Microsoft Sentinel incident creation rule was triggered (Cuando se desencadena una regla de creación de incidentes).
-
-Ojo: Asegúrate de elegir el que dice "Incident", no "Alert".
-
-Si te pide conectar, dale a "Sign in" con tu cuenta.
-
-Paso B: La Acción (Enviar a Telegram)
-Debajo del disparador, haz clic en + Nuevo paso (New step).
-
-Busca HTTP (el icono es un mundo verde).
-
-Selecciona la acción llamada simplemente HTTP.
-
-Configúralo exactamente así:
-
-Método: POST
-
-URI: https://api.telegram.org/bot<TU_NUEVO_TOKEN>/sendMessage (Recuerda: pega tu token nuevo sin espacios y sin la barra extra).
-
-Encabezados (Headers):
-
-Escribe Content-Type en la izquierda.
-
-Escribe application/json en la derecha.
-
-Cuerpo (Body): Copia y pega este código:
-
-JSON
-
-{
-  "chat_id": "<TU_CHAT_ID>",
-  "text": "🚨 **ALERTA DE SEGURIDAD SENTINEL** 🚨\n\nTitulo: @{triggerBody()?['object']?['properties']?['title']}\nSeveridad: @{triggerBody()?['object']?['properties']?['severity']}\nDescripcion: @{triggerBody()?['object']?['properties']?['description']}\n\nEnlace: @{triggerBody()?['object']?['properties']?['incidentUrl']}"
-}
-Nota: Reemplaza <TU_CHAT_ID> por el número de tu chat. Si al pegar el código, las partes que dicen @{triggerBody...} se ven como texto simple (no como fichas de colores), bórralas y selecciónalas de la lista de Contenido Dinámico que aparece a la derecha (busca "Incident Title", "Incident Severity", etc.).
-
-Dale a Guardar (arriba a la izquierda).
-
-Último Paso: Conectar en Sentinel
-Ahora que la Logic App está lista y tiene permisos:
-
-Ve a Microsoft Sentinel -> Automatización.
-
-Crea una Regla de automatización.
-
-en nombre, puedes poner el que sea de tu agrado, 
-
-en trigger, selecciona: "when incident is created
-
-conditions: da click en "+ add", selecciona "Condition (And)", en choose condition da click y selecciona severity, en el segundo recuadro da click y selecciona "equals",
-y en eltercer valor selecciona las casillas de "High y Medium"
-
-en Actions: daclick, selecciona run playbook seguido de esto semostrara una simbolo de carga debajo, y despues un espacio en blsnco, damos click y al desplegarde debe de
-mostrarse el nombre del playbook ante screado, lo selecionamos y damos click en aplicar
-
-
-Nota: Si necesitas probar tu logic app, es necesario dar estar dentro del editor de flujo y dar clic en el boton "run" seguido de "run" de nuevo y si esta bien configurada tu logic app en el grupo de telegram se mostraran los mensajes de prueba
-
-y asi se realiza una integración delogic apps con sentinel y telegram
+---
+*Documentación creada por Daniel - Ingeniero en Ciberseguridad.*
